@@ -11,7 +11,7 @@ Once connected, an AI agent (Claude, Gemini, Antigravity, OpenClaw, or any MCP-c
 - 🚀 **Start / stop / restart** MySQL, authserver and worldserver
 - 🗄️ **Query and edit the database** — run any SELECT, INSERT, UPDATE or DELETE
 - 👤 **Manage accounts** — create accounts, set GM levels, grant Donation Points
-- 🧌 **Edit NPCs** — change name, level, health, faction, loot, add vendors, etc.
+- 🐉 **Edit NPCs** — change name, level, health, faction, loot, add vendors, etc.
 - 📜 **Edit quests and items** — update rewards, requirements, stats on the fly
 - ⚙️ **Edit server config** — change rates, caps, realm settings in `worldserver.conf`
 - 📡 **Send any RA command** — anything you'd type in the worldserver console
