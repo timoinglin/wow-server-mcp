@@ -1,6 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { query, type DbName } from "../services/database.js";
+import { query, execute, type DbName } from "../services/database.js";
+import { sendRaCommand } from "../services/ra-client.js";
+import { getConfig } from "../config.js";
 
 export function registerLookupTools(server: McpServer): void {
   server.tool("search_creature_template",
@@ -58,7 +60,7 @@ export function registerLookupTools(server: McpServer): void {
         if (keys.length === 0) return { content: [{ type: "text" as const, text: "No fields provided." }], isError: true };
         const setClause = keys.map(k => `\`${k}\` = ?`).join(", ");
         const vals = [...Object.values(data), entry];
-        const { affectedRows } = await (await import("../services/database.js")).execute("world", `UPDATE creature_template SET ${setClause} WHERE entry = ?`, vals);
+        const { affectedRows } = await execute("world", `UPDATE creature_template SET ${setClause} WHERE entry = ?`, vals);
         return { content: [{ type: "text" as const, text: `Updated creature ${entry}. Rows affected: ${affectedRows}.\nRun '.reload creature_template' via RA to apply.` }] };
       } catch (err: unknown) {
         return { content: [{ type: "text" as const, text: `Error: ${(err as Error).message}` }], isError: true };
@@ -120,7 +122,7 @@ export function registerLookupTools(server: McpServer): void {
         if (keys.length === 0) return { content: [{ type: "text" as const, text: "No fields." }], isError: true };
         const setClause = keys.map(k => `\`${k}\` = ?`).join(", ");
         const vals = [...Object.values(data), id];
-        const { affectedRows } = await (await import("../services/database.js")).execute("world", `UPDATE quest_template SET ${setClause} WHERE Id = ?`, vals);
+        const { affectedRows } = await execute("world", `UPDATE quest_template SET ${setClause} WHERE Id = ?`, vals);
         return { content: [{ type: "text" as const, text: `Updated quest ${id}. Rows: ${affectedRows}. Run '.reload quest_template' via RA.` }] };
       } catch (err: unknown) {
         return { content: [{ type: "text" as const, text: `Error: ${(err as Error).message}` }], isError: true };
@@ -182,7 +184,7 @@ export function registerLookupTools(server: McpServer): void {
         if (keys.length === 0) return { content: [{ type: "text" as const, text: "No fields." }], isError: true };
         const setClause = keys.map(k => `\`${k}\` = ?`).join(", ");
         const vals = [...Object.values(data), entry];
-        const { affectedRows } = await (await import("../services/database.js")).execute("world", `UPDATE item_template SET ${setClause} WHERE entry = ?`, vals);
+        const { affectedRows } = await execute("world", `UPDATE item_template SET ${setClause} WHERE entry = ?`, vals);
         return { content: [{ type: "text" as const, text: `Updated item ${entry}. Rows: ${affectedRows}. Run '.reload item_template' via RA.` }] };
       } catch (err: unknown) {
         return { content: [{ type: "text" as const, text: `Error: ${(err as Error).message}` }], isError: true };
@@ -224,7 +226,6 @@ export function registerLookupTools(server: McpServer): void {
     {},
     async () => {
       try {
-        const { sendRaCommand } = await import("../services/ra-client.js");
         const result = await sendRaCommand(".server info");
         if (result.success) return { content: [{ type: "text" as const, text: result.response }] };
         return { content: [{ type: "text" as const, text: `RA error: ${result.error}` }], isError: true };
@@ -237,10 +238,16 @@ export function registerLookupTools(server: McpServer): void {
   server.tool("get_online_players",
     "List currently online players from the characters database.",
     {},
-    async ({ }) => {
+    async () => {
       try {
+        const config = getConfig();
+        const authDb = config.database.auth;
         const rows = await query("characters",
-          "SELECT c.guid, c.name, c.level, c.race, c.class, c.zone, c.map, a.username AS account_name FROM characters c JOIN " + "`mop_auth`.account a ON c.account = a.id WHERE c.online = 1 ORDER BY c.name",
+          `SELECT c.guid, c.name, c.level, c.race, c.class, c.zone, c.map, a.username AS account_name
+           FROM characters c
+           JOIN \`${authDb}\`.account a ON c.account = a.id
+           WHERE c.online = 1
+           ORDER BY c.name`,
           []
         );
         if (rows.length === 0) return { content: [{ type: "text" as const, text: "No players online." }] };
@@ -258,18 +265,20 @@ export function registerLookupTools(server: McpServer): void {
     async () => {
       try {
         const dbs: DbName[] = ["auth", "characters", "world"];
-        const stats: string[] = [];
-        for (const db of dbs) {
-          const sizeRows = await query(db,
-            "SELECT table_schema, COUNT(*) as table_count, SUM(data_length + index_length) as total_size, SUM(table_rows) as total_rows FROM information_schema.tables WHERE table_schema = DATABASE() GROUP BY table_schema",
-            []
-          );
-          if (sizeRows.length > 0) {
-            const r = sizeRows[0];
-            const sizeMB = (Number(r.total_size) / 1024 / 1024).toFixed(2);
-            stats.push(`${db}: ${r.table_count} tables, ~${r.total_rows} rows, ${sizeMB} MB`);
-          }
-        }
+        // Run all 3 queries in parallel for speed
+        const results = await Promise.all(
+          dbs.map(db =>
+            query(db,
+              "SELECT COUNT(*) as table_count, SUM(data_length + index_length) as total_size, SUM(table_rows) as total_rows FROM information_schema.tables WHERE table_schema = DATABASE()",
+              []
+            )
+          )
+        );
+        const stats = dbs.map((db, i) => {
+          const r = results[i][0];
+          const sizeMB = (Number(r.total_size) / 1024 / 1024).toFixed(2);
+          return `${db}: ${r.table_count} tables, ~${r.total_rows} rows, ${sizeMB} MB`;
+        });
         return { content: [{ type: "text" as const, text: stats.join("\n") }] };
       } catch (err: unknown) {
         return { content: [{ type: "text" as const, text: `Error: ${(err as Error).message}` }], isError: true };

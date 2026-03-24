@@ -34,7 +34,7 @@ function createPool(db: DbName): Pool {
     password: config.database.password,
     database: dbName,
     waitForConnections: true,
-    connectionLimit: 5,
+    connectionLimit: 10,
     queueLimit: 0,
     multipleStatements: false,
   };

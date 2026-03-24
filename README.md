@@ -8,7 +8,7 @@ A complete local **MCP (Model Context Protocol)** server for managing a standalo
 - [What Can the Agent Do?](#what-can-the-agent-do)
 - [Demo Videos](#demo-videos)
 - [Quick Start](#quick-start)
-- [Available Tools (44 total)](#available-tools-44-total)
+- [Available Tools (72 total)](#available-tools-72-total)
 - [Database Backups](#database-backups)
 - [Prerequisites](#prerequisites)
 - [Project Structure](#project-structure)
@@ -20,11 +20,15 @@ Once connected, an AI agent (Claude, Gemini, Antigravity, OpenClaw, or any MCP-c
 - 🚀 **Start / stop / restart** MySQL, authserver and worldserver
 - 🗄️ **Query and edit the database** — run any SELECT, INSERT, UPDATE or DELETE
 - 👤 **Manage accounts** — create accounts, set GM levels, grant Donation Points
-- 🐉 **Edit NPCs** — change name, level, health, faction, loot, add vendors, etc.
-- 📜 **Edit quests and items** — update rewards, requirements, stats on the fly
+- 🐉 **Create & edit NPCs** — clone templates, set flags, manage vendors, gossip menus, waypoint paths
+- 📜 **Build questlines** — create quests, assign giver/ender NPCs, manage rewards & relations
+- 💎 **Edit loot tables** — add/remove creature drops, search which mobs drop an item
+- 🔮 **Search spells & events** — look up spells from spell_dbc, view world events
+- 📍 **Teleport locations** — find coordinates and map positions for NPC placement
 - ⚙️ **Edit server config** — change rates, caps, realm settings in `worldserver.conf`
 - 📡 **Send any RA command** — anything you'd type in the worldserver console
 - 📊 **Monitor the server** — uptime, online players, DB statistics
+- 💾 **Backup databases** — full or table-specific mysqldump with WHERE clause support
 
 > In short: if you can do it in-game as a GM or via the database, the agent can do it for you.
 
@@ -133,7 +137,7 @@ File: `.vscode/mcp.json` inside your project, or via the extension's settings UI
 
 After saving, **restart your AI client** and the `emucoach` server will appear in the available tools list.
 
-## Available Tools (44 total)
+## Available Tools (72 total)
 
 ### Config Management (3)
 | Tool | Description |
@@ -190,13 +194,53 @@ After saving, **restart your AI client** and the `emucoach` server will appear i
 ### Lookup & Editing (10)
 | Tool | Description |
 |---|---|
-| `search_creature_template` / `get_creature_template` / `update_creature_template` | NPC management |
-| `search_quest_template` / `get_quest_template` / `update_quest_template` | Quest management |
-| `search_item_template` / `get_item_template` / `update_item_template` | Item management |
+| `search_creature_template` / `get_creature_template` / `update_creature_template` | NPC lookup & editing |
+| `search_quest_template` / `get_quest_template` / `update_quest_template` | Quest lookup & editing |
+| `search_item_template` / `get_item_template` / `update_item_template` | Item lookup & editing |
 | `search_gameobject_template` | Gameobject search |
 | `get_server_info` | Server uptime/players via RA |
 | `get_online_players` | Online players from DB |
 | `get_db_stats` | Database statistics |
+
+### NPC Development (13)
+| Tool | Description |
+|---|---|
+| `spawn_creature` | Spawn NPC at GM's in-game position via RA |
+| `delete_creature_spawn` | Delete a creature spawn by GUID |
+| `get_creature_spawns` | List all spawns of a creature entry (map, coords, GUID) |
+| `clone_creature_template` | Duplicate existing NPC with new entry & name |
+| `set_npc_flags` | Set npcflag bitfield (Vendor, QuestGiver, Trainer, etc.) |
+| `set_npc_gossip_menu` | Set gossip menu ID on a creature template |
+| `search_gossip_menu` | View gossip menu options and text IDs |
+| `get_npc_vendor_items` | List items sold by a vendor NPC |
+| `add_npc_vendor_item` | Add item to vendor inventory (auto-reloads) |
+| `remove_npc_vendor_item` | Remove item from vendor (auto-reloads) |
+| `get_waypoints` | List waypoints for a creature path |
+| `add_waypoint` | Add waypoint to creature path |
+| `delete_waypoints` | Delete all waypoints for a path |
+
+### Quest Development (7)
+| Tool | Description |
+|---|---|
+| `create_quest` | Create new quest with title, levels, rewards |
+| `delete_quest` | Delete quest and all NPC relations |
+| `set_quest_giver` | Assign NPC as quest starter (auto-sets QuestGiver flag) |
+| `set_quest_ender` | Assign NPC as quest turn-in (auto-sets QuestGiver flag) |
+| `remove_quest_relation` | Remove giver/ender relations |
+| `get_quest_relations` | Show all NPCs/GOs that give/finish a quest |
+| `get_quest_rewards` | Show reward items, choices, XP, money |
+
+### Loot & World Data (8)
+| Tool | Description |
+|---|---|
+| `get_creature_loot` | List loot table for a creature (with item names) |
+| `add_creature_loot_item` | Add item to creature loot (chance, qty, quest-only) |
+| `remove_creature_loot_item` | Remove item from creature loot |
+| `search_loot_by_item` | Find which creatures drop a given item |
+| `get_item_loot` | Get loot contents of a container item |
+| `search_spell` | Search spells by name or ID from spell_dbc |
+| `get_world_events` | List world events with active/upcoming status |
+| `search_teleport_location` | Find teleport locations by name (with coordinates) |
 
 ## Database Backups
 
@@ -217,11 +261,11 @@ The server includes a powerful built-in `create_db_backup` tool that securely in
 ```
 emucoach-mcp/
 ├── src/
-│   ├── index.ts              — Entry point
+│   ├── index.ts              — Entry point (v1.1.0)
 │   ├── config.ts             — Config loader/writer
 │   ├── services/
 │   │   ├── database.ts       — MySQL connection pools
-│   │   ├── ra-client.ts      — Telnet RA client
+│   │   ├── ra-client.ts      — Persistent RA telnet client
 │   │   ├── process-manager.ts— Process start/stop
 │   │   └── file-manager.ts   — Config file I/O
 │   └── tools/
@@ -231,7 +275,10 @@ emucoach-mcp/
 │       ├── process-tools.ts
 │       ├── account-tools.ts
 │       ├── server-config-tools.ts
-│       └── lookup-tools.ts
+│       ├── lookup-tools.ts
+│       ├── npc-dev-tools.ts      — NPC development tools
+│       ├── quest-dev-tools.ts    — Quest development tools
+│       └── loot-dev-tools.ts     — Loot & world data tools
 ├── dist/                     — Compiled JavaScript
 ├── install.bat               — One-click installer (double-click me!)
 ├── install.ps1               — Installer script (called by install.bat)
