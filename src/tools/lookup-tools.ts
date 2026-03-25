@@ -18,11 +18,11 @@ export function registerLookupTools(server: McpServer): void {
         let sql: string;
         let params: unknown[];
         if (isNumeric) {
-          sql = "SELECT entry, name, subname, minlevel, maxlevel, rank, type, faction_A, faction_H FROM creature_template WHERE entry = ? LIMIT ?";
-          params = [parseInt(search), max];
+          sql = `SELECT entry, name, subname, minlevel, maxlevel, \`rank\`, \`type\`, faction_A, faction_H FROM creature_template WHERE entry = ? LIMIT ${Number(max)}`;
+          params = [parseInt(search)];
         } else {
-          sql = "SELECT entry, name, subname, minlevel, maxlevel, rank, type, faction_A, faction_H FROM creature_template WHERE name LIKE ? LIMIT ?";
-          params = [`%${search}%`, max];
+          sql = `SELECT entry, name, subname, minlevel, maxlevel, \`rank\`, \`type\`, faction_A, faction_H FROM creature_template WHERE name LIKE ? LIMIT ${Number(max)}`;
+          params = [`%${search}%`];
         }
         const rows = await query("world", sql, params);
         if (rows.length === 0) return { content: [{ type: "text" as const, text: "No creatures found." }] };
@@ -80,11 +80,11 @@ export function registerLookupTools(server: McpServer): void {
         const isNumeric = /^\d+$/.test(search);
         let sql: string; let params: unknown[];
         if (isNumeric) {
-          sql = "SELECT Id, Title, Level, MinLevel, MaxLevel, Type FROM quest_template WHERE Id = ? LIMIT ?";
-          params = [parseInt(search), max];
+          sql = `SELECT Id, Title, Level, MinLevel, MaxLevel, \`Type\` FROM quest_template WHERE Id = ? LIMIT ${Number(max)}`;
+          params = [parseInt(search)];
         } else {
-          sql = "SELECT Id, Title, Level, MinLevel, MaxLevel, Type FROM quest_template WHERE Title LIKE ? LIMIT ?";
-          params = [`%${search}%`, max];
+          sql = `SELECT Id, Title, Level, MinLevel, MaxLevel, \`Type\` FROM quest_template WHERE Title LIKE ? LIMIT ${Number(max)}`;
+          params = [`%${search}%`];
         }
         const rows = await query("world", sql, params);
         if (rows.length === 0) return { content: [{ type: "text" as const, text: "No quests found." }] };
@@ -142,11 +142,11 @@ export function registerLookupTools(server: McpServer): void {
         const isNumeric = /^\d+$/.test(search);
         let sql: string; let params: unknown[];
         if (isNumeric) {
-          sql = "SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass FROM item_template WHERE entry = ? LIMIT ?";
-          params = [parseInt(search), max];
+          sql = `SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass FROM item_template WHERE entry = ? LIMIT ${Number(max)}`;
+          params = [parseInt(search)];
         } else {
-          sql = "SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass FROM item_template WHERE name LIKE ? LIMIT ?";
-          params = [`%${search}%`, max];
+          sql = `SELECT entry, name, Quality, ItemLevel, RequiredLevel, class, subclass FROM item_template WHERE name LIKE ? LIMIT ${Number(max)}`;
+          params = [`%${search}%`];
         }
         const rows = await query("world", sql, params);
         if (rows.length === 0) return { content: [{ type: "text" as const, text: "No items found." }] };
@@ -204,11 +204,11 @@ export function registerLookupTools(server: McpServer): void {
         const isNumeric = /^\d+$/.test(search);
         let sql: string; let params: unknown[];
         if (isNumeric) {
-          sql = "SELECT entry, name, type, faction, size FROM gameobject_template WHERE entry = ? LIMIT ?";
-          params = [parseInt(search), max];
+          sql = `SELECT entry, name, \`type\`, faction, size FROM gameobject_template WHERE entry = ? LIMIT ${Number(max)}`;
+          params = [parseInt(search)];
         } else {
-          sql = "SELECT entry, name, type, faction, size FROM gameobject_template WHERE name LIKE ? LIMIT ?";
-          params = [`%${search}%`, max];
+          sql = `SELECT entry, name, \`type\`, faction, size FROM gameobject_template WHERE name LIKE ? LIMIT ${Number(max)}`;
+          params = [`%${search}%`];
         }
         const rows = await query("world", sql, params);
         if (rows.length === 0) return { content: [{ type: "text" as const, text: "No gameobjects found." }] };

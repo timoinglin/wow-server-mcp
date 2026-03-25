@@ -182,8 +182,7 @@ export function registerAccountTools(server: McpServer): void {
           sql += " WHERE username LIKE ?";
           params.push(`%${search}%`);
         }
-        sql += " ORDER BY id ASC LIMIT ?";
-        params.push(maxRows);
+        sql += ` ORDER BY id ASC LIMIT ${Number(maxRows)}`;
 
         const rows = await query("auth", sql, params);
 

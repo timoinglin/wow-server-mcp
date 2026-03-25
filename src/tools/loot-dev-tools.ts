@@ -126,8 +126,8 @@ export function registerLootDevTools(server: McpServer): void {
            LEFT JOIN creature_template ct ON ct.entry = clt.entry
            WHERE clt.item = ?
            ORDER BY ABS(clt.ChanceOrQuestChance) DESC
-           LIMIT ?`,
-          [item_id, limit]
+           LIMIT ${Number(limit)}`,
+          [item_id]
         );
 
         const itemRow = await query("world", "SELECT name FROM item_template WHERE entry = ?", [item_id]);
@@ -195,15 +195,15 @@ export function registerLootDevTools(server: McpServer): void {
         let sql: string;
         let params: unknown[];
         if (isNumeric) {
-          sql = "SELECT Id, SpellName1, SpellDescription1, SchoolMask, Category FROM spell_dbc WHERE Id = ? LIMIT ?";
-          params = [parseInt(search), limit];
+          sql = `SELECT Id, Comment FROM spell_dbc WHERE Id = ? LIMIT ${Number(limit)}`;
+          params = [parseInt(search)];
         } else {
-          sql = "SELECT Id, SpellName1, SpellDescription1, SchoolMask, Category FROM spell_dbc WHERE SpellName1 LIKE ? LIMIT ?";
-          params = [`%${search}%`, limit];
+          sql = `SELECT Id, Comment FROM spell_dbc WHERE Comment LIKE ? LIMIT ${Number(limit)}`;
+          params = [`%${search}%`];
         }
         const rows = await query("world", sql, params);
         if (rows.length === 0) return { content: [{ type: "text" as const, text: `No spells found matching "${search}".` }] };
-        const lines = rows.map(r => `  [${r.Id}] ${r.SpellName1} | School: ${r.SchoolMask} | Cat: ${r.Category}`);
+        const lines = rows.map(r => `  [${r.Id}] ${r.Comment || "(no comment)"}`);
         return { content: [{ type: "text" as const, text: `${rows.length} spell(s) found:\n\n${lines.join("\n")}` }] };
       } catch (err: unknown) {
         return { content: [{ type: "text" as const, text: `Error searching spells: ${(err as Error).message}` }], isError: true };
@@ -222,22 +222,22 @@ export function registerLootDevTools(server: McpServer): void {
     async () => {
       try {
         const rows = await query("world",
-          `SELECT entry, description, start_time, end_time, occurence, length, holiday, state
+          `SELECT eventEntry, description, start_time, end_time, occurence, length, holiday, world_event
            FROM game_event
            ORDER BY start_time ASC`,
           []
         );
         if (rows.length === 0) return { content: [{ type: "text" as const, text: "No game events found in game_event table." }] };
 
-        const now = Math.floor(Date.now() / 1000);
+        const now = new Date();
         const lines = rows.map(r => {
-          const start = Number(r.start_time);
-          const len = Number(r.length) * 60;
-          const end = start + len;
-          let status = "Upcoming";
-          if (now >= start && now <= end) status = "🟢 ACTIVE";
-          else if (now > end) status = "Ended";
-          return `[${r.entry}] ${r.description} | ${status} | Holiday: ${r.holiday || "none"}`;
+          const start = r.start_time ? new Date(r.start_time) : null;
+          const end = r.end_time ? new Date(r.end_time) : null;
+          let status = "Scheduled";
+          if (start && end && now >= start && now <= end) status = "🟢 ACTIVE";
+          else if (end && now > end) status = "Ended";
+          const stateStr = r.world_event === 1 ? "Auto" : "Manual";
+          return `[${r.eventEntry}] ${r.description} | ${status} | Holiday: ${r.holiday || "none"} | ${stateStr}`;
         });
         return { content: [{ type: "text" as const, text: `${rows.length} event(s):\n\n${lines.join("\n")}` }] };
       } catch (err: unknown) {
@@ -260,8 +260,8 @@ export function registerLootDevTools(server: McpServer): void {
     async ({ search, limit = 20 }) => {
       try {
         const rows = await query("world",
-          "SELECT id, name, map, position_x, position_y, position_z, orientation FROM game_tele WHERE name LIKE ? LIMIT ?",
-          [`%${search}%`, limit]
+          `SELECT id, name, map, position_x, position_y, position_z, orientation FROM game_tele WHERE name LIKE ? LIMIT ${Number(limit)}`,
+          [`%${search}%`]
         );
         if (rows.length === 0) return { content: [{ type: "text" as const, text: `No teleport locations found matching "${search}".` }] };
         const lines = rows.map(r =>
