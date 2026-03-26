@@ -7,6 +7,7 @@ dist/
 
 # Local config (contains credentials — never commit this)
 config.json
+schema_override.json
 
 # Logs
 *.log
