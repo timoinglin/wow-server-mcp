@@ -1,6 +1,6 @@
 # Emucoach MCP Server
 
-[![Version](https://img.shields.io/badge/version-1.2.0-brightgreen.svg)](https://github.com/timoinglin/emucoach-mcp/releases)
+[![Version](https://img.shields.io/badge/version-1.2.1-brightgreen.svg)](https://github.com/timoinglin/emucoach-mcp/releases)
 [![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-18%2B-339933.svg?logo=node.js&logoColor=white)](https://nodejs.org)
@@ -348,6 +348,11 @@ emucoach-mcp/
 ---
 
 ## Changelog
+
+### v1.2.1 (2026-03-26)
+- 🐛 Fixed `quest_template` column name mismatches in `get_quest_rewards` and `create_quest`
+- 🐛 Fixed `npcflag` inconsistency for quest giver/ender relations
+- 📝 Updated README version shield
 
 ### v1.2.0 (2026-03-25)
 - 🐛 Fixed SQL compatibility with older MySQL versions (`LIMIT ?` in prepared statements)
