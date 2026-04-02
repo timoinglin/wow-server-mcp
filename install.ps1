@@ -1,20 +1,20 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    One-click installer for emucoach-mcp
+    One-click installer for wow-server-mcp
 .DESCRIPTION
     Checks for Node.js (installs via winget if missing), copies example.config.json
     to config.json, runs npm install, and builds the TypeScript project.
 #>
 
 $ErrorActionPreference = "Stop"
-$Host.UI.RawUI.WindowTitle = "EmuCoach MCP Installer"
+$Host.UI.RawUI.WindowTitle = "WoW Server MCP Installer"
 
 # --- Colors / helpers ------------------------------------------------------
 function Write-Header {
     Write-Host ""
     Write-Host "============================================" -ForegroundColor Cyan
-    Write-Host "   EmuCoach MCP - One-Click Installer" -ForegroundColor Cyan
+    Write-Host "   WoW Server MCP - One-Click Installer" -ForegroundColor Cyan
     Write-Host "============================================" -ForegroundColor Cyan
     Write-Host ""
 }

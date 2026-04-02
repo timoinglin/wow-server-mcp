@@ -60,7 +60,7 @@ export interface SchemaDefinition {
 }
 
 /**
- * Baseline schema mapping for Emucoach (MoP/Cata based on TrinityCore).
+ * Baseline schema mapping for WoW Server (MoP/Cata based on TrinityCore).
  */
 export const MoPSchema: SchemaDefinition = {
   auth: {

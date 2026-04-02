@@ -18,8 +18,8 @@ import { initializeSchema } from "./schema/resolver.js";
 
 async function main(): Promise<void> {
   const server = new McpServer({
-    name: "emucoach-mcp",
-    version: "1.2.1",
+    name: "wow-server-mcp",
+    version: "1.3.2",
   });
 
   // Initialize database schema mapping
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error("Emucoach MCP Server v1.2.1 started (stdio transport)");
+  console.error("WoW Server MCP started (stdio transport)");
 }
 
 main().catch((err) => {

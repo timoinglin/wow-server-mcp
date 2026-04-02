@@ -1,3 +1,3 @@
 @echo off
-title EmuCoach MCP Installer
+title WoW Server MCP Installer
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1"
