@@ -4,9 +4,17 @@ import { sendRaCommand } from "../services/ra-client.js";
 import { query, execute } from "../services/database.js";
 import { getSchema } from "../schema/resolver.js";
 
-export function registerAccountTools(server: McpServer): void {
-  const schema = getSchema();
+/** Replace every occurrence of `password` in a string with "***". Used to
+ *  filter command echoes from RA responses so we don't surface plaintext
+ *  passwords back to the AI agent / logs. */
+function redactPassword(text: string, password: string): string {
+  if (!password) return text;
+  // Escape regex metacharacters in the password value.
+  const escaped = password.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(escaped, "g"), "***");
+}
 
+export function registerAccountTools(server: McpServer): void {
   server.tool(
     "create_account",
     "Create a new game account with username and password via RA command (.account create). The account can then log in to the game.",
@@ -16,13 +24,14 @@ export function registerAccountTools(server: McpServer): void {
     },
     async ({ username, password }) => {
       const result = await sendRaCommand(`.account create ${username} ${password}`);
+      const safeResponse = redactPassword(result.response || "", password);
       return {
         content: [
           {
             type: "text" as const,
             text: result.success
-              ? `Account creation result: ${result.response || "Success"}`
-              : `Failed: ${result.error}`,
+              ? `Account creation result: ${safeResponse || "Success"}`
+              : `Failed: ${redactPassword(result.error || "", password)}`,
           },
         ],
         isError: !result.success,
@@ -68,13 +77,14 @@ export function registerAccountTools(server: McpServer): void {
       const result = await sendRaCommand(
         `.account set password ${username} ${new_password} ${new_password}`
       );
+      const safeResponse = redactPassword(result.response || "", new_password);
       return {
         content: [
           {
             type: "text" as const,
             text: result.success
-              ? `Password changed: ${result.response || "Success"}`
-              : `Failed: ${result.error}`,
+              ? `Password changed: ${safeResponse || "Success"}`
+              : `Failed: ${redactPassword(result.error || "", new_password)}`,
           },
         ],
         isError: !result.success,
@@ -91,7 +101,7 @@ export function registerAccountTools(server: McpServer): void {
     },
     async ({ account_id, dp_amount }) => {
       try {
-        const acc = schema.auth.account;
+        const acc = getSchema().auth.account;
         // First check if account exists
         const rows = await query(
           "auth",
@@ -135,28 +145,31 @@ export function registerAccountTools(server: McpServer): void {
     },
     async ({ account_id, amount }) => {
       try {
-        const acc = schema.auth.account;
-        const rows = await query(
+        const acc = getSchema().auth.account;
+        // Single atomic UPDATE: safe under concurrent calls (no read-modify-
+        // write window). affectedRows tells us whether the account existed.
+        const result = await execute(
           "auth",
-          `SELECT ${acc.id}, ${acc.username}, ${acc.dp} FROM ${acc.table} WHERE ${acc.id} = ?`,
-          [account_id]
+          `UPDATE ${acc.table} SET ${acc.dp} = ${acc.dp} + ? WHERE ${acc.id} = ?`,
+          [amount, account_id]
         );
-        if (rows.length === 0) {
+        if (result.affectedRows === 0) {
           return {
             content: [{ type: "text" as const, text: `Account ID ${account_id} not found.` }],
             isError: true,
           };
         }
-
-        const oldDp = Number(rows[0][acc.dp]) || 0;
-        const newDp = oldDp + amount;
-        await execute("auth", `UPDATE ${acc.table} SET ${acc.dp} = ? WHERE ${acc.id} = ?`, [newDp, account_id]);
-
+        const rows = await query(
+          "auth",
+          `SELECT ${acc.username}, ${acc.dp} FROM ${acc.table} WHERE ${acc.id} = ?`,
+          [account_id]
+        );
+        const newDp = Number(rows[0]?.[acc.dp]) || 0;
         return {
           content: [
             {
               type: "text" as const,
-              text: `DP updated for "${rows[0][acc.username]}" (ID: ${account_id})\nOld: ${oldDp} → New: ${newDp} (${amount >= 0 ? "+" : ""}${amount})`,
+              text: `DP updated for "${rows[0]?.[acc.username]}" (ID: ${account_id})\nNew balance: ${newDp} (${amount >= 0 ? "+" : ""}${amount})`,
             },
           ],
         };
@@ -179,6 +192,7 @@ export function registerAccountTools(server: McpServer): void {
     },
     async ({ limit, search }) => {
       try {
+        const schema = getSchema();
         const acc = schema.auth.account;
         const access = schema.auth.account_access;
         const maxRows = limit || 50;

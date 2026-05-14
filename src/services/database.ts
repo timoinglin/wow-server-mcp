@@ -1,11 +1,8 @@
 import mysql, { Pool, PoolOptions, RowDataPacket, ResultSetHeader } from "mysql2/promise";
-import { exec } from "child_process";
-import { promisify } from "util";
-import { existsSync, mkdirSync } from "fs";
+import { spawn } from "child_process";
+import { createWriteStream, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { getConfig, resolveConfigPath } from "../config.js";
-
-const execAsync = promisify(exec);
 
 const pools: Map<string, Pool> = new Map();
 
@@ -109,7 +106,23 @@ export async function testConnection(db: DbName): Promise<boolean> {
   }
 }
 
-/** Backup database(s) using mysqldump */
+/** Identifier-safe: letters, digits, underscore. Used to validate table names
+ *  before passing them to mysqldump as command-line arguments. */
+const SAFE_IDENT = /^[A-Za-z0-9_]+$/;
+
+/**
+ * Backup database(s) using mysqldump.
+ *
+ * Security notes:
+ *  - We invoke mysqldump with `spawn` and an argument array (no shell), so
+ *    table names / db names cannot inject extra shell tokens.
+ *  - The MySQL password is passed via the `MYSQL_PWD` environment variable
+ *    rather than `-p<pwd>` on the command line, so it does not appear in
+ *    process listings (tasklist / ps).
+ *  - Identifier arguments (database name, table names) are validated with
+ *    `SAFE_IDENT`. `whereClause` is passed as a single `--where=...` argv
+ *    entry, so it cannot break out of the arg even with quotes/semicolons.
+ */
 export async function createDatabaseBackup(
   databases: DbName[],
   tables?: string[],
@@ -129,10 +142,24 @@ export async function createDatabaseBackup(
     }
   });
 
-  let cmd = `"${mysqldumpPath}" -h${config.database.host} -P${config.database.port} -u${config.database.user}`;
-  if (config.database.password) {
-    cmd += ` -p${config.database.password}`;
+  for (const name of dbNames) {
+    if (!name || !SAFE_IDENT.test(name)) {
+      throw new Error(`Refusing to back up database with unsafe name: ${JSON.stringify(name)}`);
+    }
   }
+  if (tables) {
+    for (const t of tables) {
+      if (!SAFE_IDENT.test(t)) {
+        throw new Error(`Refusing to back up table with unsafe name: ${JSON.stringify(t)}`);
+      }
+    }
+  }
+
+  const args: string[] = [
+    `-h${config.database.host}`,
+    `-P${String(config.database.port)}`,
+    `-u${config.database.user}`,
+  ];
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   let filename = `backup_${timestamp}`;
@@ -153,19 +180,52 @@ export async function createDatabaseBackup(
     if (databases.length > 1) {
       throw new Error("Cannot specify tables when dumping multiple databases.");
     }
-    cmd += ` ${dbNames[0]} ${tables.join(" ")}`;
+    args.push(dbNames[0]!, ...tables);
   } else {
-    cmd += ` --databases ${dbNames.join(" ")}`;
+    args.push("--databases", ...dbNames as string[]);
   }
 
   if (whereClause) {
-    // Note: mysqldump --where applies to ALL dumped tables in that execution.
-    // If you only want to filter rows for a specific table, provide only that table in the 'tables' list.
-    cmd += ` "--where=${whereClause}"`;
+    // mysqldump --where applies to ALL dumped tables in this execution.
+    // Passed as a single argv entry so shell metacharacters in the clause
+    // cannot break out.
+    args.push(`--where=${whereClause}`);
   }
 
-  cmd += ` > "${outputPath}"`;
+  await new Promise<void>((resolve, reject) => {
+    const out = createWriteStream(outputPath);
+    const env = { ...process.env };
+    if (config.database.password) env.MYSQL_PWD = config.database.password;
 
-  await execAsync(cmd, { windowsHide: true });
+    const child = spawn(mysqldumpPath, args, {
+      env,
+      windowsHide: true,
+      shell: false,
+    });
+
+    child.stdout.pipe(out);
+
+    let stderr = "";
+    child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+
+    child.on("error", (err) => {
+      out.destroy();
+      reject(new Error(`mysqldump spawn failed: ${err.message}`));
+    });
+
+    child.on("close", (code) => {
+      out.end(() => {
+        if (code === 0) {
+          resolve();
+        } else {
+          // Redact password (which lives in env, not args, but belt-and-braces)
+          // and trim stderr — mysqldump can emit warnings on stderr even on success.
+          const safeStderr = stderr.replace(/\b(password)\b\s*[:=]\s*\S+/gi, "$1=***").trim();
+          reject(new Error(`mysqldump exited with code ${code}${safeStderr ? `: ${safeStderr}` : ""}`));
+        }
+      });
+    });
+  });
+
   return outputPath;
 }

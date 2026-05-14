@@ -5,8 +5,6 @@ import { sendRaCommand } from "../services/ra-client.js";
 import { getSchema } from "../schema/resolver.js";
 
 export function registerQuestDevTools(server: McpServer): void {
-  const schema = getSchema();
-
   // ---------------------------------------------------------------------------
   // Quest relations: who gives / finishes a quest
   // ---------------------------------------------------------------------------
@@ -19,7 +17,7 @@ export function registerQuestDevTools(server: McpServer): void {
     },
     async ({ quest_id }) => {
       try {
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         const [cStart, cEnd, goStart, goEnd] = await Promise.all([
           query("world",
             `SELECT cqs.id AS entry, ct.${ct.name} FROM creature_queststarter cqs LEFT JOIN ${ct.table} ct ON ct.${ct.entry} = cqs.id WHERE cqs.quest = ?`,
@@ -70,7 +68,7 @@ export function registerQuestDevTools(server: McpServer): void {
         await execute("world", "INSERT INTO creature_queststarter (id, quest) VALUES (?, ?)", [npc_entry, quest_id]);
 
         // Make sure NPC has QuestGiver flag (npcflag bit 2)
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         await execute("world", `UPDATE ${ct.table} SET ${ct.npcflag} = ${ct.npcflag} | 2 WHERE ${ct.entry} = ? AND (${ct.npcflag} & 2) = 0`, [npc_entry]);
 
         await sendRaCommand(".reload creature_queststarter creature_questender");
@@ -99,7 +97,7 @@ export function registerQuestDevTools(server: McpServer): void {
         await execute("world", "INSERT INTO creature_questender (id, quest) VALUES (?, ?)", [npc_entry, quest_id]);
 
         // Ensure QuestGiver flag
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         await execute("world", `UPDATE ${ct.table} SET ${ct.npcflag} = ${ct.npcflag} | 2 WHERE ${ct.entry} = ? AND (${ct.npcflag} & 2) = 0`, [npc_entry]);
 
         await sendRaCommand(".reload creature_queststarter creature_questender");
@@ -160,7 +158,7 @@ export function registerQuestDevTools(server: McpServer): void {
     },
     async ({ id, title, level, min_level, max_level = 0, type = 0, reward_xp = 0, reward_money = 0, quest_info = "", area_description = "" }) => {
       try {
-        const qt = schema.world.quest_template;
+        const qt = getSchema().world.quest_template;
         // Check ID not in use
         const existing = await query("world", `SELECT ${qt.id} FROM ${qt.table} WHERE ${qt.id} = ?`, [id]);
         if (existing.length > 0) return { content: [{ type: "text" as const, text: `Quest ID ${id} already exists. Choose a different ID.` }], isError: true };
@@ -192,7 +190,7 @@ export function registerQuestDevTools(server: McpServer): void {
     },
     async ({ quest_id }) => {
       try {
-        const qt = schema.world.quest_template;
+        const qt = getSchema().world.quest_template;
         const [, , , r] = await Promise.all([
           execute("world", "DELETE FROM creature_queststarter WHERE quest = ?", [quest_id]),
           execute("world", "DELETE FROM creature_questender WHERE quest = ?", [quest_id]),
@@ -221,7 +219,7 @@ export function registerQuestDevTools(server: McpServer): void {
     },
     async ({ quest_id }) => {
       try {
-        const qt = schema.world.quest_template;
+        const qt = getSchema().world.quest_template;
         const rows = await query("world",
           `SELECT ${qt.id}, ${qt.title},
             RewardItemId1, RewardItemCount1, RewardItemId2, RewardItemCount2, RewardItemId3, RewardItemCount3, RewardItemId4, RewardItemCount4,

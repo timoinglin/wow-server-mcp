@@ -1,64 +1,63 @@
 # WoW Server MCP
- 
- [![Version](https://img.shields.io/badge/version-1.3.2-brightgreen.svg)](https://github.com/timoinglin/wow-server-mcp/releases)
- [![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io)
- [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
- [![Node.js](https://img.shields.io/badge/node-18%2B-339933.svg?logo=node.js&logoColor=white)](https://nodejs.org)
- [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
- 
- A complete local **[MCP (Model Context Protocol)](https://modelcontextprotocol.io)** server for managing a standalone WoW private server. Built and tested for **World of Warcraft** repacks (specifically Cata/MoP) with MySQL, but works with any repack when correctly configured.
 
-> In short: if you can do it in-game as a GM or via the database, the agent can do it for you.
+[![Version](https://img.shields.io/badge/version-1.3.3-brightgreen.svg)](https://github.com/timoinglin/wow-server-mcp/releases)
+[![Build](https://github.com/timoinglin/wow-server-mcp/actions/workflows/build.yml/badge.svg)](https://github.com/timoinglin/wow-server-mcp/actions/workflows/build.yml)
+[![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-18%2B-339933.svg?logo=node.js&logoColor=white)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
+A local **[MCP](https://modelcontextprotocol.io)** server that lets any MCP-compatible AI client (Claude, Codex, Cursor, etc.) manage a standalone World of Warcraft private server. Built and tested for **Cata / MoP repacks** with MySQL — works with any repack once configured.
+
+> **TL;DR:** if you can do it in-game as a GM or via the database, the agent can do it for you.
 
 ## Table of Contents
 
-- [What Can the Agent Do?](#what-can-the-agent-do)
-- [Why MCP Instead of Raw Credentials?](#why-mcp-instead-of-raw-credentials)
+- [What the Agent Can Do](#what-the-agent-can-do)
+- [Why an MCP Instead of Raw Credentials?](#why-an-mcp-instead-of-raw-credentials)
 - [Demo Videos](#demo-videos)
 - [Quick Start](#quick-start)
 - [Dynamic Schema (Any Expansion)](#dynamic-schema-any-expansion)
 - [Available Tools (76 total)](#available-tools-76-total)
 - [Database Backups](#database-backups)
-- [Updating from an Older Release](#updating-from-an-older-release)
+- [Updating](#updating)
 - [Prerequisites](#prerequisites)
 - [Project Structure](#project-structure)
+- [Releases](#releases)
 
 ---
 
-## What Can the Agent Do?
+## What the Agent Can Do
 
-Once connected, an AI agent (Claude, Gemini, Antigravity, or any MCP-compatible client) gets **full control over your WoW server** through natural language. No need to touch the database, config files, or console manually — just ask.
+Once connected, the AI gets full control over your WoW server through natural language.
 
 | Category | Capabilities |
 |:---|:---|
-| 🚀 **Server Control** | Start / stop / restart MySQL, authserver, and worldserver |
-| 🗄️ **Database** | Run any SELECT, INSERT, UPDATE, or DELETE query |
+| 🚀 **Server Control** | Start / stop / restart MySQL, authserver, worldserver |
+| 🗄️ **Database** | Run any SELECT, INSERT, UPDATE, DELETE — or use scoped helpers |
 | 👤 **Accounts** | Create accounts, set GM levels, grant Donation Points |
-| 🐉 **NPCs** | Clone templates, set flags, manage vendors, gossip menus, waypoint paths |
+| 🐉 **NPCs** | Clone templates, set flags, manage vendors, gossip menus, waypoints |
 | 📜 **Quests** | Create quests, assign giver/ender NPCs, manage rewards & relations |
 | 💎 **Loot** | Add/remove creature drops, search which mobs drop an item |
 | 🔮 **Spells & Events** | Look up spells from `spell_dbc`, view world events |
 | 📍 **Teleports** | Find coordinates and map positions for NPC placement |
-| ⚙️ **Config** | Change rates, caps, realm settings in `worldserver.conf` |
+| ⚙️ **Config** | Edit rates, caps, realm settings in `worldserver.conf` |
 | 📡 **Remote Access** | Send any RA command — anything you'd type in the worldserver console |
 | 📊 **Monitoring** | Uptime, online players, DB statistics |
-| 💾 **Backups** | Full or table-specific `mysqldump` with WHERE clause support |
+| 💾 **Backups** | Full or table-specific `mysqldump` with `WHERE` clause support |
 
-## Why MCP Instead of Raw Credentials?
+## Why an MCP Instead of Raw Credentials?
 
-You *could* just tell your AI agent _"here's my workspace, my DB password is `ascent`, and RA is on port 3443"_ — and it would technically figure things out. But here's why a dedicated MCP server is significantly better:
+You *could* hand the AI your DB password and RA port and let it figure things out — but a dedicated MCP is significantly better:
 
 | | Raw Credentials | MCP Server |
 |:---|:---|:---|
-| **Reliability** | Agent guesses SQL column names, often gets them wrong | Pre-built queries matched to your exact schema |
-| **Speed** | Agent writes + debugs SQL from scratch every time | Instant tool calls — no trial and error |
-| **Safety** | Agent has unrestricted DB access, can `DROP TABLE` | Scoped tools with built-in validation and WHERE guards |
-| **Token cost** | Burns tokens writing boilerplate SQL and reading schema | Minimal tokens — just the tool name and parameters |
+| **Reliability** | Agent guesses SQL column names | Pre-built queries matched to your exact schema |
+| **Speed** | Writes + debugs SQL from scratch every time | Instant tool calls — no trial and error |
+| **Safety** | Unrestricted DB access (`DROP TABLE` is one prompt away) | Scoped tools with built-in validation and `WHERE` guards |
+| **Token cost** | Burns tokens on boilerplate SQL and schema reads | Just the tool name and parameters |
 | **Consistency** | Different results depending on the model's mood | Same reliable output every time |
-| **Process control** | Agent needs shell access + process knowledge | One-click start/stop/restart with status checks |
-| **Portability** | Prompts break when you switch AI clients | Works with Claude, Gemini, Antigravity, Copilot, etc. |
-
-> **TL;DR**: The MCP server turns your AI agent from a _"smart intern who needs to Google everything"_ into a _"senior dev with a custom toolkit"_.
+| **Portability** | Prompts break when you switch AI clients | Works with any MCP-compatible client |
 
 ## Demo Videos
 
@@ -74,44 +73,38 @@ You *could* just tell your AI agent _"here's my workspace, my DB password is `as
 ## Quick Start
 
 > [!IMPORTANT]
-> **Compatibility Note**: The default configuration, as well as the 1-click installer, are primarily designed for the standard folder layout of **Cataclysm and Mists of Pandaria repacks**.
-> 
-> However, **you can install and use this MCP server anywhere, with any repack**, simply by modifying the absolute paths inside your `config.json` file to point to your repack's executables and config files.
+> The default `config.json` and 1-click installer assume the standard folder layout used by most **Cata / MoP repacks**. You can install anywhere — just edit the paths in `config.json` to point at your repack's executables and config files.
 >
-> **Default Recommended Layout** (if using default config paths):
+> **Recommended layout** (works with default config paths):
 > ```
 > 📁 YourRepackFolder\
 > ├── 📁 Database\
-> ├── 📁 wow-server-mcp\   ← clone here
-> └── 📁 Repack\
+> ├── 📁 Repack\
+> └── 📁 wow-server-mcp\   ← clone here
 > ```
 > ```bash
 > cd "C:\path\to\YourRepackFolder"
 > git clone https://github.com/timoinglin/wow-server-mcp.git
 > ```
 
-### 1. Install & Build (One-Click)
+### 1. Install & Build
 
-Double-click **`install.bat`** inside the `wow-server-mcp` folder.  
-It will automatically:
-- Check for Node.js and install it via `winget` if missing
-- Copy `example.config.json` → `config.json`
-- Run `npm install`
-- Build the TypeScript project (`npm run build`)
+**Easy (Windows):** double-click `install.bat`. It checks for Node.js (installs via `winget` if missing), copies `example.config.json` → `config.json`, runs `npm install`, and builds.
 
-> **Manual alternative:**
-> ```bash
-> cd wow-server-mcp
-> npm install
-> npm run build
-> ```
+**Manual (any OS):**
+```bash
+cd wow-server-mcp
+cp example.config.json config.json   # Windows: copy example.config.json config.json
+npm install
+npm run build
+```
 
 ### 2. Configure
 
-Open `config.json` and update:
-- **Database credentials** — default: `root` / `ascent` on `localhost:3306`
-- **RA credentials** — create a GM account first (level 3+), then set username/password
-- **Server paths** — should be correct for the default repack layout
+Edit `config.json`:
+- **Database credentials** — defaults to `root` / `ascent` on `localhost:3306`
+- **RA credentials** — set after creating a GM account (level 3+)
+- **Server paths** — only change if your folder layout differs from the recommended one above
 
 ### 3. Enable Remote Access (RA) on the Worldserver
 
@@ -121,17 +114,93 @@ Ra.Enable = 1
 Ra.IP     = 127.0.0.1
 Ra.Port   = 3443
 ```
-Then restart the worldserver and set the matching credentials in `config.json` under `remote_access`.
+Restart the worldserver and put the matching credentials in `config.json` under `remote_access`.
 
 ### 4. Add to Your AI Client
 
-Replace `<REPACK_PATH>` with the absolute path to your repack folder.  
+Replace `<REPACK_PATH>` below with the absolute path to your repack folder.
 Use **forward slashes `/`** even on Windows (e.g. `C:/Games/mop_repack/MOPFREE`).
 
+After adding the config, **restart your AI client**; `wow-server` will appear in its tool list.
+
 ---
 
-**🟣 Antigravity (VSCode extension)**  
-File: `C:\Users\<you>\.gemini\antigravity\mcp_config.json`
+#### 🟠 Claude Desktop
+
+Open **Settings → Developer → Edit Config**, or edit the file directly:
+
+| OS | Path |
+|:---|:---|
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| macOS   | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Linux   | `~/.config/Claude/claude_desktop_config.json` |
+
+```json
+{
+  "mcpServers": {
+    "wow-server": {
+      "command": "node",
+      "args": ["<REPACK_PATH>/wow-server-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+If the file already exists, merge the `"wow-server"` entry into the existing `mcpServers` object. Quit Claude from the tray icon (right-click → Quit) before relaunching — closing the window leaves it running in the background.
+
+---
+
+#### 🟢 Claude Code (VS Code extension / CLI)
+
+**Easiest — one command:**
+
+```bash
+claude mcp add wow-server -s user -- node "<REPACK_PATH>/wow-server-mcp/dist/index.js"
+```
+
+`-s user` makes the server available in every project. Use `-s project` to scope it to the current workspace (writes `.mcp.json` to the project root).
+
+**Or edit the project-scoped file by hand**, `<your-project>/.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "wow-server": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["<REPACK_PATH>/wow-server-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+Reload VS Code (`Ctrl+Shift+P` → "Developer: Reload Window"). For project-scoped servers, Claude prompts once to approve — click **approve**. Verify with `/mcp` inside Claude Code.
+
+---
+
+#### 🔷 Codex CLI
+
+Add to `~/.codex/config.toml` (create the file if it doesn't exist):
+
+```toml
+[mcp_servers.wow-server]
+command = "node"
+args = ["<REPACK_PATH>/wow-server-mcp/dist/index.js"]
+```
+
+Start a fresh `codex` session. Tools appear under the namespace `mcp__wow-server__*`.
+
+---
+
+#### 🟣 Antigravity (Google's VS Code-based agent IDE)
+
+**Easiest — built-in UI:** click the **Agent Manager** icon in the top bar, then the **⋯ menu → MCP Servers** and add a new server with:
+
+- **Command:** `node`
+- **Args:** `<REPACK_PATH>/wow-server-mcp/dist/index.js`
+
+**Or edit the config file directly** at `C:\Users\<you>\.gemini\antigravity\mcp_config.json`:
+
 ```json
 {
   "mcpServers": {
@@ -143,44 +212,19 @@ File: `C:\Users\<you>\.gemini\antigravity\mcp_config.json`
   }
 }
 ```
-
----
-
-**🟠 Claude Desktop**  
-File: `C:\Users\<you>\AppData\Roaming\Claude\claude_desktop_config.json`
-```json
-{
-  "mcpServers": {
-    "wow-server": {
-      "command": "node",
-      "args": ["<REPACK_PATH>/wow-server-mcp/dist/index.js"],
-      "cwd": "<REPACK_PATH>/wow-server-mcp"
-    }
-  }
-}
-```
-
----
-
-**🔵 VS Code (GitHub Copilot / Cline / OpenClaw / other MCP extensions)**  
-File: `.vscode/mcp.json` inside your project, or via the extension's settings UI — check your extension's docs for the exact location. The JSON block is the same as above.
-
----
-
-After saving, **restart your AI client** and the `wow-server` will appear in the available tools list.
 
 ---
 
 ## Dynamic Schema (Any Expansion)
 
-The server utilizes a **Dynamic Schema Mapping** system, meaning it can automatically adapt to Mists of Pandaria, Cataclysm, Wrath of the Lich King, or Legion repacks, even when database column names are different.
+The MCP ships with the Cata / MoP TrinityCore schema baked in, but it can adapt to any repack — Wrath, Cataclysm, MoP, Legion, AzerothCore variants — by overriding column names.
 
-**To configure the MCP for your specific repack:**
-1. Complete the `Quick Start` connection steps above so the AI can connect to your database.
-2. Ask your AI Assistant to **"Run the `discover_schema` tool"**.
-3. The AI will scan your database (`INFORMATION_SCHEMA`) and generate a `schema_override.json` file perfectly tailored to your repack's database structure.
-4. Tell the AI to update your `config.json` to include `"schemaOverride": "schema_override.json"`.
-5. Restart the AI client, and you are fully compatible!
+To set it up for a non-default core:
+
+1. Complete the [Quick Start](#quick-start) so the AI can reach your database.
+2. Ask the AI to **run the `discover_schema` tool**. It scans `INFORMATION_SCHEMA` and writes a `schema_override.json` tailored to your DB.
+3. The default `example.config.json` already sets `"schemaOverride": "schema_override.json"` — so if you copied that as your `config.json`, the file is picked up on the next start. If your `config.json` doesn't have that line, add it.
+4. Restart your AI client. Look for `Schema override loaded from …` in the MCP server's stderr to confirm.
 
 ---
 
@@ -190,25 +234,25 @@ The server utilizes a **Dynamic Schema Mapping** system, meaning it can automati
 | Tool | Description |
 |:---|:---|
 | `get_config` | Read current config.json |
-| `update_config` | Update config fields (deep merge) |
+| `update_config` | Update config fields (deep merge; `config_files` is read-only) |
 | `reset_config` | Reset to example defaults |
-| `discover_schema` | Auto-detect database structure for custom repacks |
+| `discover_schema` | Auto-detect DB structure for custom repacks |
 
 ### Database Access (7)
 | Tool | Description |
 |:---|:---|
-| `db_query` | SELECT queries (parameterized) |
-| `db_insert` | Insert rows |
-| `db_update` | Update rows with WHERE |
-| `db_delete` | Delete rows with WHERE |
-| `db_execute` | Raw SQL execution |
+| `db_query` | Parameterized `SELECT` queries |
+| `db_insert` | Insert a row |
+| `db_update` | Update with `WHERE` |
+| `db_delete` | Delete with `WHERE` |
+| `db_execute` | Raw SQL (DDL, complex joins, etc.) |
 | `db_test_connection` | Test DB connectivity |
-| `create_db_backup` | Full or table-specific database dumps |
+| `create_db_backup` | Full or table-specific `mysqldump` with optional `WHERE` |
 
 ### RA Commands (2)
 | Tool | Description |
 |:---|:---|
-| `ra_command` | Send single RA command |
+| `ra_command` | Send a single RA command |
 | `ra_command_batch` | Send multiple commands in sequence |
 
 ### Process Management (10)
@@ -225,21 +269,21 @@ The server utilizes a **Dynamic Schema Mapping** system, meaning it can automati
 | `create_account` | Create game account via RA |
 | `set_gm_level` | Set GM level (0–9) |
 | `set_account_password` | Change password |
-| `modify_dp` | Set DP (Battle Pay) |
-| `add_dp` | Add/subtract DP |
+| `modify_dp` | Set DP (Battle Pay) balance |
+| `add_dp` | Add/subtract DP (atomic) |
 | `list_accounts` | List all accounts |
-| `get_account_characters` | List characters for account |
+| `get_account_characters` | List characters for an account |
 
 ### Server Config Files (5)
 | Tool | Description |
 |:---|:---|
 | `read_server_config` | Read allowed config files |
-| `write_server_config` | Write config files |
-| `get_conf_value` | Get specific `.conf` setting |
-| `update_conf_value` | Update specific `.conf` setting |
-| `list_allowed_files` | List allowed files |
+| `write_server_config` | Write allowed config files |
+| `get_conf_value` | Get a single `.conf` setting |
+| `update_conf_value` | Update a single `.conf` setting |
+| `list_allowed_files` | List which config files are accessible |
 
-### Lookup & Editing (10)
+### Lookup & Editing (13)
 | Tool | Description |
 |:---|:---|
 | `search_creature_template` / `get_creature_template` / `update_creature_template` | NPC lookup & editing |
@@ -255,7 +299,7 @@ The server utilizes a **Dynamic Schema Mapping** system, meaning it can automati
 |:---|:---|
 | `spawn_creature` | Spawn NPC at GM's in-game position via RA |
 | `delete_creature_spawn` | Delete a creature spawn by GUID |
-| `get_creature_spawns` | List all spawns of a creature entry (map, coords, GUID) |
+| `get_creature_spawns` | List all spawns of a creature entry |
 | `clone_creature_template` | Duplicate existing NPC with new entry & name |
 | `set_npc_flags` | Set npcflag bitfield (Vendor, QuestGiver, Trainer, etc.) |
 | `set_npc_gossip_menu` | Set gossip menu ID on a creature template |
@@ -294,17 +338,15 @@ The server utilizes a **Dynamic Schema Mapping** system, meaning it can automati
 
 ## Database Backups
 
-The server includes a powerful built-in `create_db_backup` tool that securely interfaces with your `mysqldump.exe`. All backups generated by the AI agent are cleanly placed into a local `backups/` directory located right beside the `wow-server-mcp` folder. The tool supports three levels of flexibility:
+`create_db_backup` invokes `mysqldump` securely (no shell, password via `MYSQL_PWD` env, identifier validation on table names) and writes to a `backups/` directory next to `wow-server-mcp`. Three modes:
 
-- **Full Backups** — specify `auth`, `characters`, and `world` for a complete backup file.
-- **Single Database Backups** — dump an entire single database to a `.sql` file.
-- **Custom / Fine-Grained Backups** — target specific tables (e.g. `['account']`) with a SQL `WHERE` clause (e.g. `username = 'kneuma'`) to isolate exactly the data you need.
+- **Full backup** — pass all three databases (`auth`, `characters`, `world`) for a complete dump.
+- **Single database** — pass one database to dump its entire schema.
+- **Targeted backup** — pass one database + specific `tables` + an optional `WHERE` clause (e.g. dump `account` rows for `username = 'kneuma'`).
 
 ---
 
-## Updating from an Older Release
-
-If you already have a previous version installed, updating is simple:
+## Updating
 
 ```bash
 cd wow-server-mcp
@@ -313,19 +355,19 @@ npm install
 npm run build
 ```
 
-Then **restart your AI client** (Antigravity, Claude Desktop, etc.) to reload the MCP server with the new code.
+Then restart your AI client to load the new code.
 
 > [!NOTE]
-> Your `config.json` is gitignored and will **not** be overwritten. If new config options are added in a release, check `example.config.json` for reference.
+> `config.json` is gitignored and won't be overwritten. If new options appear in a release, check `example.config.json`.
 
 ---
 
 ## Prerequisites
 
-- **Node.js** 18+ (tested with v24.13.0)
-- **MySQL** running (via the repack's `MySQL.bat`)
-- **Worldserver** running (for RA commands)
-- A **GM account** with level 3+ (for RA access)
+- **Node.js** 18+ (tested through v24.x)
+- **MySQL** running (the repack's `MySQL.bat` works)
+- **Worldserver** running (required for RA-based tools)
+- A **GM account** with level 3+ (for RA authentication)
 
 ---
 
@@ -333,46 +375,17 @@ Then **restart your AI client** (Antigravity, Claude Desktop, etc.) to reload th
 
 ```
 wow-server-mcp/
-├── src/
-├── dist/                     — Compiled JavaScript
-├── install.bat               — One-click installer (double-click me!)
-├── install.ps1               — Installer script (called by install.bat)
-├── config.json               — Your local config (never commit this)
-├── example.config.json       — Template config
+├── src/                   — TypeScript source
+├── dist/                  — Compiled JS (generated by `npm run build`)
+├── install.bat            — One-click Windows installer
+├── install.ps1            — Installer script (called by install.bat)
+├── example.config.json    — Template config (commit-safe)
+├── config.json            — Your local config (gitignored, has credentials)
 └── package.json
 ```
 
 ---
 
-## Changelog
+## Releases
 
-### v1.3.2 (2026-04-02)
-- 🚀 **Project Rebrand:** Renamed from `emucoach-mcp` to `wow-server-mcp`.
-- ♻️ **Refactored All Files:** Updated internal identifiers, identifiers, documentation, and installer scripts for the new name.
-- 📦 **GitHub Release:** Automated release under the new repository name.
-
-### v1.3.0 (2026-03-26)
-- 🚀 **Dynamic Schema Mapping:** Implemented the `discover_schema` tool to automatically detect and map database structures (WotLK, Cata, Legion, etc.)!
-- ♻️ **Refactored All Tools:** Account, NPC, Quest, Loot, and Lookup tools now fully utilize the dynamic schema resolver.
-- 📝 Added full cross-expansion setup documentation to README.
-
-### v1.2.1 (2026-03-26)
-- 🐛 Fixed `quest_template` column name mismatches in `get_quest_rewards` and `create_quest`
-- 🐛 Fixed `npcflag` inconsistency for quest giver/ender relations
-- 📝 Updated README version shield
-
-### v1.2.0 (2026-03-25)
-- 🐛 Fixed SQL compatibility with older MySQL versions (`LIMIT ?` in prepared statements)
-- 🐛 Fixed reserved keyword escaping for `rank`, `type`, `Type` columns
-- 🐛 Fixed `spell_dbc` schema mismatch (`Comment` column instead of `SpellName1`)
-- 🐛 Fixed `game_event` schema mismatch (`eventEntry` instead of `entry`)
-- 📝 Improved README with MCP badges, "Why MCP?" section, and capability table
-- ✅ All 72 tools verified operational
-
-### v1.1.0
-- 🐉 Added NPC development tools (13 tools)
-- 📜 Added Quest development tools (7 tools)
-- 💎 Added Loot & world data tools (8 tools)
-
-### v1.0.0
-- 🎉 Initial release with core tools across 7 categories
+Per-version release notes live on the [GitHub Releases page](https://github.com/timoinglin/wow-server-mcp/releases).

@@ -9,6 +9,11 @@ dist/
 config.json
 schema_override.json
 
+# Per-developer MCP client wiring (paths are absolute & user-specific)
+.mcp.json
+.claude/
+.vscode/mcp.json
+
 # Logs
 *.log
 npm-debug.log*

@@ -6,33 +6,24 @@ import { getConfig } from "../config.js";
 import { getSchema } from "../schema/resolver.js";
 
 export function registerNpcDevTools(server: McpServer): void {
-  const schema = getSchema();
-
   // ---------------------------------------------------------------------------
   // Spawn / delete
   // ---------------------------------------------------------------------------
 
   server.tool(
     "spawn_creature",
-    "Spawn a creature by template entry at the player's current location (or a specific position) via RA '.npc add <entry>'. The GM character must be in-game at the desired location.",
+    "Spawn a creature by template entry via RA '.npc add <entry>'. The creature spawns at the position of the GM character currently selected in the worldserver console (RA has no per-call player context). A GM must be in-game at the desired location.",
     {
       entry: z.number().describe("Creature template entry ID to spawn"),
-      player_name: z.string().optional().describe("GM character name to target (uses current position of that player)"),
     },
-    async ({ entry, player_name }) => {
+    async ({ entry }) => {
       try {
-        // If player_name provided, select them first so the command runs in their context
-        let cmd = `.npc add ${entry}`;
-        if (player_name) {
-          const selectResult = await sendRaCommand(`.lookup player account ${player_name}`);
-          // Just run the add command directly
-        }
-        const result = await sendRaCommand(cmd);
+        const result = await sendRaCommand(`.npc add ${entry}`);
         return {
           content: [{
             type: "text" as const,
             text: result.success
-              ? `Spawned creature entry ${entry}. Response: ${result.response || "Success"}\nNote: The creature spawns at the in-game GM character's current position.`
+              ? `Spawned creature entry ${entry}. Response: ${result.response || "Success"}\nNote: spawned at the GM character's current in-game position.`
               : `Failed: ${result.error}`,
           }],
           isError: !result.success,
@@ -65,17 +56,18 @@ export function registerNpcDevTools(server: McpServer): void {
 
   server.tool(
     "get_creature_spawns",
-    "List all spawns (instances) of a creature template entry in the world, from the 'creature' table. Shows GUID, map, coordinates, and phase.",
+    "List all spawns (instances) of a creature template entry in the world, from the 'creature' table. Shows GUID, map, coordinates, and spawn time.",
     {
       entry: z.number().describe("Creature template entry ID"),
       map: z.number().optional().describe("Filter by map ID"),
     },
     async ({ entry, map }) => {
       try {
-        let sql = "SELECT guid, id AS entry, map, position_x, position_y, position_z, orientation, spawntimesecs FROM creature WHERE id = ?";
+        const c = getSchema().world.creature;
+        let sql = `SELECT \`${c.guid}\` AS guid, \`${c.id}\` AS entry, \`${c.map}\` AS map, \`${c.position_x}\` AS position_x, \`${c.position_y}\` AS position_y, \`${c.position_z}\` AS position_z, \`${c.orientation}\` AS orientation, \`${c.spawntimesecs}\` AS spawntimesecs FROM \`${c.table}\` WHERE \`${c.id}\` = ?`;
         const params: unknown[] = [entry];
-        if (map !== undefined) { sql += " AND map = ?"; params.push(map); }
-        sql += " ORDER BY guid LIMIT 100";
+        if (map !== undefined) { sql += ` AND \`${c.map}\` = ?`; params.push(map); }
+        sql += ` ORDER BY \`${c.guid}\` LIMIT 100`;
 
         const rows = await query("world", sql, params);
         if (rows.length === 0) {
@@ -187,7 +179,7 @@ export function registerNpcDevTools(server: McpServer): void {
     },
     async ({ entry, gossip_menu_id }) => {
       try {
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         const result = await execute("world", `UPDATE ${ct.table} SET ${ct.gossip_menu_id} = ? WHERE ${ct.entry} = ?`, [gossip_menu_id, entry]);
         if (result.affectedRows === 0) return { content: [{ type: "text" as const, text: `Creature entry ${entry} not found.` }], isError: true };
         await sendRaCommand(`.reload ${ct.table}`);
@@ -314,7 +306,7 @@ export function registerNpcDevTools(server: McpServer): void {
     },
     async ({ entry, npc_flags }) => {
       try {
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         const result = await execute("world", `UPDATE ${ct.table} SET ${ct.npcflag} = ? WHERE ${ct.entry} = ?`, [npc_flags, entry]);
         if (result.affectedRows === 0) return { content: [{ type: "text" as const, text: `Creature entry ${entry} not found.` }], isError: true };
         await sendRaCommand(`.reload ${ct.table}`);
@@ -335,7 +327,7 @@ export function registerNpcDevTools(server: McpServer): void {
     },
     async ({ source_entry, new_entry, new_name }) => {
       try {
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         // Check source exists
         const src = await query("world", `SELECT * FROM ${ct.table} WHERE ${ct.entry} = ?`, [source_entry]);
         if (src.length === 0) return { content: [{ type: "text" as const, text: `Source entry ${source_entry} not found.` }], isError: true };

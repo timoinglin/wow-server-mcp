@@ -93,11 +93,23 @@ export function registerSchemaTools(server: McpServer): void {
                 logs.push(`Found 'creature_template' table.`);
                 if (creatureCols.includes("entry")) discoveredSchema.world!.creature_template!.entry = "entry";
                 if (creatureCols.includes("name")) discoveredSchema.world!.creature_template!.name = "name";
-                
+
                 if (creatureCols.includes("npcflag")) discoveredSchema.world!.creature_template!.npcflag = "npcflag";
                 if (creatureCols.includes("npc_flags")) discoveredSchema.world!.creature_template!.npcflag = "npc_flags";
-                
+
                 if (creatureCols.includes("gossip_menu_id")) discoveredSchema.world!.creature_template!.gossip_menu_id = "gossip_menu_id";
+            }
+
+            // Creature (spawn) table — TC 3.3.5/AzerothCore use `id1`, MoP/Cata use `id`.
+            const spawnCols = await getColumns("world", "creature");
+            if (spawnCols.length > 0) {
+                logs.push(`Found 'creature' (spawn) table with ${spawnCols.length} columns.`);
+                if (spawnCols.includes("id")) {
+                  discoveredSchema.world!.creature!.id = "id";
+                } else if (spawnCols.includes("id1")) {
+                  discoveredSchema.world!.creature!.id = "id1";
+                  logs.push(`  Detected legacy 'id1' column — using id1 instead of id.`);
+                }
             }
         } catch (e: any) {
            logs.push(`World discovery error: ${e.message}`);

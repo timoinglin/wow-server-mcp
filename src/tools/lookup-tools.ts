@@ -6,7 +6,6 @@ import { getConfig } from "../config.js";
 import { getSchema } from "../schema/resolver.js";
 
 export function registerLookupTools(server: McpServer): void {
-  const schema = getSchema();
   server.tool("search_creature_template",
     "Search NPCs/creatures by name or entry ID in the world database. Returns matching creature templates.",
     {
@@ -19,7 +18,7 @@ export function registerLookupTools(server: McpServer): void {
         const isNumeric = /^\d+$/.test(search);
         let sql: string;
         let params: unknown[];
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         if (isNumeric) {
           sql = `SELECT ${ct.entry}, ${ct.name}, subname, minlevel, maxlevel, \`rank\`, \`type\`, faction_A, faction_H FROM ${ct.table} WHERE ${ct.entry} = ? LIMIT ${Number(max)}`;
           params = [parseInt(search)];
@@ -41,7 +40,7 @@ export function registerLookupTools(server: McpServer): void {
     { entry: z.number().describe("Creature template entry ID") },
     async ({ entry }) => {
       try {
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         const rows = await query("world", `SELECT * FROM ${ct.table} WHERE ${ct.entry} = ?`, [entry]);
         if (rows.length === 0) return { content: [{ type: "text" as const, text: `Creature entry ${entry} not found.` }], isError: true };
         return { content: [{ type: "text" as const, text: JSON.stringify(rows[0], null, 2) }] };
@@ -59,7 +58,7 @@ export function registerLookupTools(server: McpServer): void {
     },
     async ({ entry, fields }) => {
       try {
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         const data = JSON.parse(fields) as Record<string, unknown>;
         const keys = Object.keys(data);
         if (keys.length === 0) return { content: [{ type: "text" as const, text: "No fields provided." }], isError: true };
@@ -84,7 +83,7 @@ export function registerLookupTools(server: McpServer): void {
         const max = limit || 20;
         const isNumeric = /^\d+$/.test(search);
         let sql: string; let params: unknown[];
-        const qt = schema.world.quest_template;
+        const qt = getSchema().world.quest_template;
         if (isNumeric) {
           sql = `SELECT ${qt.id}, ${qt.title}, ${qt.level}, MinLevel, MaxLevel, \`Type\` FROM ${qt.table} WHERE ${qt.id} = ? LIMIT ${Number(max)}`;
           params = [parseInt(search)];
@@ -106,7 +105,7 @@ export function registerLookupTools(server: McpServer): void {
     { id: z.number().describe("Quest ID") },
     async ({ id }) => {
       try {
-        const qt = schema.world.quest_template;
+        const qt = getSchema().world.quest_template;
         const rows = await query("world", `SELECT * FROM ${qt.table} WHERE ${qt.id} = ?`, [id]);
         if (rows.length === 0) return { content: [{ type: "text" as const, text: `Quest ${id} not found.` }], isError: true };
         return { content: [{ type: "text" as const, text: JSON.stringify(rows[0], null, 2) }] };
@@ -124,7 +123,7 @@ export function registerLookupTools(server: McpServer): void {
     },
     async ({ id, fields }) => {
       try {
-        const qt = schema.world.quest_template;
+        const qt = getSchema().world.quest_template;
         const data = JSON.parse(fields) as Record<string, unknown>;
         const keys = Object.keys(data);
         if (keys.length === 0) return { content: [{ type: "text" as const, text: "No fields." }], isError: true };

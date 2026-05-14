@@ -4,8 +4,6 @@ import { query, execute } from "../services/database.js";
 import { getSchema } from "../schema/resolver.js";
 
 export function registerLootDevTools(server: McpServer): void {
-  const schema = getSchema();
-
   // ---------------------------------------------------------------------------
   // Creature loot
   // ---------------------------------------------------------------------------
@@ -121,7 +119,7 @@ export function registerLootDevTools(server: McpServer): void {
     },
     async ({ item_id, limit = 20 }) => {
       try {
-        const ct = schema.world.creature_template;
+        const ct = getSchema().world.creature_template;
         const rows = await query("world",
           `SELECT clt.entry AS creature_entry, ct.${ct.name} AS creature_name,
                   clt.ChanceOrQuestChance AS chance, clt.mincountOrRef AS min_count, clt.maxcount AS max_count

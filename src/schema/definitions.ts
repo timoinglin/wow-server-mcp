@@ -56,6 +56,21 @@ export interface SchemaDefinition {
       class: string;
       subclass: string;
     };
+    /** Spawn table (NOT creature_template). Column names differ between
+     *  cores — MoP/Cata use `id`, TC 3.3.5 / AzerothCore use `id1`. */
+    creature: {
+      table: string;
+      /** Primary key column for spawn rows. */
+      guid: string;
+      /** Template entry column (the link to creature_template.entry). */
+      id: string;
+      map: string;
+      position_x: string;
+      position_y: string;
+      position_z: string;
+      orientation: string;
+      spawntimesecs: string;
+    };
   };
 }
 
@@ -115,6 +130,17 @@ export const MoPSchema: SchemaDefinition = {
       required_level: 'RequiredLevel',
       class: 'class',
       subclass: 'subclass',
+    },
+    creature: {
+      table: 'creature',
+      guid: 'guid',
+      id: 'id',
+      map: 'map',
+      position_x: 'position_x',
+      position_y: 'position_y',
+      position_z: 'position_z',
+      orientation: 'orientation',
+      spawntimesecs: 'spawntimesecs',
     },
   },
 };

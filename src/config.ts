@@ -48,6 +48,8 @@ export interface AppConfig {
   remote_access: RemoteAccessConfig;
   servers: ServersConfig;
   config_files: ConfigFiles;
+  /** Optional path (relative to project root or absolute) to a schema override JSON file. */
+  schemaOverride?: string;
 }
 
 const CONFIG_PATH = resolve(__dirname, "..", "config.json");
@@ -68,7 +70,23 @@ export function getConfig(): AppConfig {
   return JSON.parse(raw) as AppConfig;
 }
 
+/**
+ * Sections of config.json that cannot be modified via `updateConfig` (i.e. via
+ * the `update_config` MCP tool). These control where the server reads & writes
+ * files on disk; allowing the agent to repoint them would let it write to any
+ * path via `write_server_config` / `update_conf_value`. Edit them by hand if
+ * you need to change them.
+ */
+const LOCKED_SECTIONS = new Set<string>(["config_files"]);
+
 export function updateConfig(patch: Record<string, unknown>): AppConfig {
+  for (const key of Object.keys(patch)) {
+    if (LOCKED_SECTIONS.has(key)) {
+      throw new Error(
+        `Section "${key}" is read-only via update_config (security: paths under config_files gate file writes). Edit config.json directly to change it.`
+      );
+    }
+  }
   const current = getConfig();
   const updated = deepMerge(current as unknown as Record<string, unknown>, patch) as unknown as AppConfig;
   writeFileSync(CONFIG_PATH, JSON.stringify(updated, null, 2), "utf-8");

@@ -15,15 +15,23 @@ import { registerQuestDevTools } from "./tools/quest-dev-tools.js";
 import { registerLootDevTools } from "./tools/loot-dev-tools.js";
 import { registerSchemaTools } from "./tools/schema-tools.js";
 import { initializeSchema } from "./schema/resolver.js";
+import { getConfig, resolveConfigPath } from "./config.js";
+import { isAbsolute } from "path";
 
 async function main(): Promise<void> {
   const server = new McpServer({
     name: "wow-server-mcp",
-    version: "1.3.2",
+    version: "1.3.3",
   });
 
-  // Initialize database schema mapping
-  await initializeSchema();
+  // Initialize database schema mapping. If config.schemaOverride is set,
+  // resolve it (absolute paths used as-is, relative paths resolved from the
+  // project base dir) and pass it to the resolver.
+  const cfg = getConfig();
+  const overridePath = cfg.schemaOverride
+    ? (isAbsolute(cfg.schemaOverride) ? cfg.schemaOverride : resolveConfigPath(cfg.schemaOverride))
+    : undefined;
+  await initializeSchema(overridePath);
 
   // Register all tool groups
   registerConfigTools(server);

@@ -8,7 +8,7 @@
     "characters": "mop_characters",
     "world": "mop_world"
   },
-  "schemaOverride": "",
+  "schemaOverride": "schema_override.json",
   "remote_access": {
     "host": "127.0.0.1",
     "port": 3443,
