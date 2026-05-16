@@ -11,6 +11,10 @@ A local **[MCP](https://modelcontextprotocol.io)** server that lets any MCP-comp
 
 > **TL;DR:** if you can do it in-game as a GM or via the database, the agent can do it for you.
 
+> 💛 **Using the WoW Server MCP?** It's free and open-source, built and maintained in spare time. If it's saved you hours of server admin — or you'd like to see it keep growing — a coffee genuinely helps. See [Support the Project](#support-the-project).
+>
+> [![Support the project on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/kneuma)
+
 ## Table of Contents
 
 - [What the Agent Can Do](#what-the-agent-can-do)
@@ -24,6 +28,7 @@ A local **[MCP](https://modelcontextprotocol.io)** server that lets any MCP-comp
 - [Prerequisites](#prerequisites)
 - [Project Structure](#project-structure)
 - [Releases](#releases)
+- [Support the Project](#support-the-project)
 
 ---
 
@@ -389,3 +394,13 @@ wow-server-mcp/
 ## Releases
 
 Per-version release notes live on the [GitHub Releases page](https://github.com/timoinglin/wow-server-mcp/releases).
+
+---
+
+## Support the Project
+
+This project is free and open-source, built and maintained in spare time. If it's saved you time setting up or running your server — or you'd just like to see it keep growing — a coffee is hugely appreciated and helps keep the WoW repack tools maintained and improving.
+
+[![Support the project on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/kneuma)
+
+Every contribution also funds more free tools for the MoP / Cata repack community — thank you! 💛
