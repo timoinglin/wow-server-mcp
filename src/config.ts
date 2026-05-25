@@ -50,6 +50,10 @@ export interface AppConfig {
   config_files: ConfigFiles;
   /** Optional path (relative to project root or absolute) to a schema override JSON file. */
   schemaOverride?: string;
+  /** Optional absolute path to the worldserver core source tree (e.g. SkyFire / TrinityCore
+   *  clone). Enables `check_scriptname` and other source-grep forensic tools. If unset,
+   *  those tools return a "source path not configured" message instead of failing. */
+  core_source_path?: string;
 }
 
 const CONFIG_PATH = resolve(__dirname, "..", "config.json");

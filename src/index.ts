@@ -14,6 +14,7 @@ import { registerNpcDevTools } from "./tools/npc-dev-tools.js";
 import { registerQuestDevTools } from "./tools/quest-dev-tools.js";
 import { registerLootDevTools } from "./tools/loot-dev-tools.js";
 import { registerSchemaTools } from "./tools/schema-tools.js";
+import { registerForensicTools } from "./tools/forensic-tools.js";
 import { initializeSchema } from "./schema/resolver.js";
 import { getConfig, resolveConfigPath } from "./config.js";
 import { isAbsolute } from "path";
@@ -21,7 +22,7 @@ import { isAbsolute } from "path";
 async function main(): Promise<void> {
   const server = new McpServer({
     name: "wow-server-mcp",
-    version: "1.3.3",
+    version: "1.4.0",
   });
 
   // Initialize database schema mapping. If config.schemaOverride is set,
@@ -47,6 +48,9 @@ async function main(): Promise<void> {
   registerNpcDevTools(server);
   registerQuestDevTools(server);
   registerLootDevTools(server);
+
+  // Forensic / DB-integrity tools (bug hunting, false-positive prevention)
+  registerForensicTools(server);
 
   // Connect via stdio transport
   const transport = new StdioServerTransport();

@@ -1,6 +1,6 @@
 # WoW Server MCP
 
-[![Version](https://img.shields.io/badge/version-1.3.3-brightgreen.svg)](https://github.com/timoinglin/wow-server-mcp/releases)
+[![Version](https://img.shields.io/badge/version-1.4.0-brightgreen.svg)](https://github.com/timoinglin/wow-server-mcp/releases)
 [![Build](https://github.com/timoinglin/wow-server-mcp/actions/workflows/build.yml/badge.svg)](https://github.com/timoinglin/wow-server-mcp/actions/workflows/build.yml)
 [![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -22,7 +22,8 @@ A local **[MCP](https://modelcontextprotocol.io)** server that lets any MCP-comp
 - [Demo Videos](#demo-videos)
 - [Quick Start](#quick-start)
 - [Dynamic Schema (Any Expansion)](#dynamic-schema-any-expansion)
-- [Available Tools (76 total)](#available-tools-76-total)
+- [Available Tools (82 total)](#available-tools-82-total)
+- [Bug-Hunting / DB Integrity](#bug-hunting--db-integrity)
 - [Database Backups](#database-backups)
 - [Updating](#updating)
 - [Prerequisites](#prerequisites)
@@ -50,6 +51,7 @@ Once connected, the AI gets full control over your WoW server through natural la
 | 📡 **Remote Access** | Send any RA command — anything you'd type in the worldserver console |
 | 📊 **Monitoring** | Uptime, online players, DB statistics |
 | 💾 **Backups** | Full or table-specific `mysqldump` with `WHERE` clause support |
+| 🔬 **Forensics** | Deep-inspect creatures / gossip chains / SmartAI / loot, find orphan FK refs, verify ScriptNames against core source |
 
 ## Why an MCP Instead of Raw Credentials?
 
@@ -233,7 +235,7 @@ To set it up for a non-default core:
 
 ---
 
-## Available Tools (76 total)
+## Available Tools (82 total)
 
 ### Config Management (4)
 | Tool | Description |
@@ -338,6 +340,39 @@ To set it up for a non-default core:
 | `search_spell` | Search spells by name or ID from `spell_dbc` |
 | `get_world_events` | List world events with active/upcoming status |
 | `search_teleport_location` | Find teleport locations by name (with coordinates) |
+
+### Forensics / DB Integrity (6) — new in 1.4.0
+| Tool | Description |
+|:---|:---|
+| `inspect_creature` | One-call deep dive: template (incl. `ScriptName`, `AIName`), quest starter/ender, vendor, smart_scripts summary, spawn count, loot table summary. Flags NPCs whose SmartAI gossip handlers make "missing menu" claims false positives. |
+| `inspect_gossip_chain` | Walk a gossip menu: row + options + per-option `action_menu_id` status (exists / missing / GOSSIP_OPTION_* sentinel like `1048576` = battlefield queue) + every NPC using the menu + cross-referenced SmartAI event 62/64 handlers. |
+| `get_smart_scripts` | Pull SmartAI rows for any creature / gameobject / quest / etc. with human-readable `event_type` and `action_type` names. |
+| `find_orphan_refs` | Generic FK-integrity sweep — "rows in `source.col` pointing to values absent from `target.col`". Auto-excludes gossip sentinels. Pre-built sweep examples in `docs/BUGHUNT.md`. |
+| `check_scriptname` | Grep the configured worldserver core source tree (`core_source_path` in `config.json`) for a `ScriptName`. Returns file:line matches or a "not found in upstream — may be in modified core" warning. |
+| `inspect_loot_table` | Inspect any loot table for an entry, classifying each row as valid item / currency (negative ID) / reference / missing. Prevents the "chest drops nothing" false positive when 12 of 14 drops actually work. |
+
+See [`docs/BUGHUNT.md`](docs/BUGHUNT.md) for the false-positive playbook these tools were designed around.
+
+---
+
+## Bug-Hunting / DB Integrity
+
+The forensic tools above were built to answer one question: **"is this DB anomaly actually a bug, or does the core handle it some other way?"** Common pitfalls they prevent:
+
+- **Currencies aren't items.** Negative item IDs in loot tables point to `Currency.dbc`, not `item_template`. `inspect_loot_table` labels them explicitly.
+- **Magic `action_menu_id` values aren't menus.** `1048576` = `GOSSIP_OPTION_BATTLEFIELD` (Wintergrasp queue), `2097152` = auctioneer, etc. `inspect_gossip_chain` flags all known sentinels.
+- **SmartAI bypasses missing gossip rows.** `event_type = 62` (`GOSSIP_SELECT`) fires when a player clicks an option regardless of whether the destination menu row exists. `inspect_creature` warns when both `gossip_menu_id` and SmartAI gossip handlers are present.
+- **`ScriptName` implies C++ handling.** A non-empty `creature_template.ScriptName` means a compiled handler exists on the running server. `check_scriptname` verifies whether the name resolves in the configured core source tree.
+- **Cherry-picking rows is misleading.** A loot table with 12 working + 2 broken rows is not "broken". `inspect_loot_table` always shows the full picture.
+
+If you're running a hunt at scale, read `docs/BUGHUNT.md` first — it includes pre-built `find_orphan_refs` queries for the most productive sweeps.
+
+To enable `check_scriptname`, add to `config.json`:
+```json
+{
+  "core_source_path": "C:/path/to/your/SkyFire_or_TrinityCore/checkout"
+}
+```
 
 ---
 
