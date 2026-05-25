@@ -1,6 +1,6 @@
 # WoW Server MCP
 
-[![Version](https://img.shields.io/badge/version-1.4.1-brightgreen.svg)](https://github.com/timoinglin/wow-server-mcp/releases)
+[![Version](https://img.shields.io/badge/version-1.4.2-brightgreen.svg)](https://github.com/timoinglin/wow-server-mcp/releases)
 [![Build](https://github.com/timoinglin/wow-server-mcp/actions/workflows/build.yml/badge.svg)](https://github.com/timoinglin/wow-server-mcp/actions/workflows/build.yml)
 [![MCP](https://img.shields.io/badge/MCP-compatible-8A2BE2.svg)](https://modelcontextprotocol.io)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

@@ -1,6 +1,6 @@
 {
   "name": "wow-server-mcp",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Advanced WoW Server MCP - Universal World of Warcraft repack management toolkit.",
   "type": "module",
   "main": "dist/index.js",

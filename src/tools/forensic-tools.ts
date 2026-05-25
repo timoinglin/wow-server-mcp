@@ -343,14 +343,18 @@ export function registerForensicTools(server: McpServer): void {
       try {
         // Schema varies across cores: 3.3.5 has target_param4, MoP/Cata SkyFire does not.
         // SELECT * keeps us schema-agnostic — only a handful of rows per call so cost is fine.
+        // LIMIT is inlined (not bound) because mysql2 prepared-statement protocol rejects
+        // numeric placeholders for LIMIT on some MySQL versions ("Incorrect arguments to
+        // mysqld_stmt_execute"). `limit` is validated by zod min(1).max(500).
+        const safeLimit = Math.max(1, Math.min(500, Math.floor(limit)));
         const rows = await query(
           "world",
           `SELECT *
            FROM smart_scripts
            WHERE source_type = ? AND entryorguid = ?
            ORDER BY id
-           LIMIT ?`,
-          [source_type, entryorguid, limit]
+           LIMIT ${safeLimit}`,
+          [source_type, entryorguid]
         );
         if (rows.length === 0) {
           return { content: [{ type: "text" as const, text: `No smart_scripts rows for source_type=${source_type} (${SMART_SOURCE_TYPE_NAMES[source_type] || "?"}), entryorguid=${entryorguid}.` }] };
