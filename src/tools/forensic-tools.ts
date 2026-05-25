@@ -341,11 +341,11 @@ export function registerForensicTools(server: McpServer): void {
     },
     async ({ entryorguid, source_type = 0, limit = 100 }) => {
       try {
+        // Schema varies across cores: 3.3.5 has target_param4, MoP/Cata SkyFire does not.
+        // SELECT * keeps us schema-agnostic — only a handful of rows per call so cost is fine.
         const rows = await query(
           "world",
-          `SELECT id, link, event_type, event_param1, event_param2, event_param3, event_param4,
-                  action_type, action_param1, action_param2, action_param3, action_param4, action_param5, action_param6,
-                  target_type, target_param1, target_param2, target_param3, target_param4
+          `SELECT *
            FROM smart_scripts
            WHERE source_type = ? AND entryorguid = ?
            ORDER BY id
@@ -355,9 +355,10 @@ export function registerForensicTools(server: McpServer): void {
         if (rows.length === 0) {
           return { content: [{ type: "text" as const, text: `No smart_scripts rows for source_type=${source_type} (${SMART_SOURCE_TYPE_NAMES[source_type] || "?"}), entryorguid=${entryorguid}.` }] };
         }
-        const lines = rows.map(r =>
-          `  id=${r.id} link=${r.link} | event ${eventName(Number(r.event_type))} (p1=${r.event_param1}, p2=${r.event_param2}, p3=${r.event_param3}, p4=${r.event_param4}) → action ${actionName(Number(r.action_type))} (p1=${r.action_param1}, p2=${r.action_param2}, p3=${r.action_param3}) | target=${r.target_type}`
-        );
+        const lines = rows.map(r => {
+          const p4 = r.event_param4 !== undefined ? `, p4=${r.event_param4}` : "";
+          return `  id=${r.id} link=${r.link} | event ${eventName(Number(r.event_type))} (p1=${r.event_param1}, p2=${r.event_param2}, p3=${r.event_param3}${p4}) → action ${actionName(Number(r.action_type))} (p1=${r.action_param1}, p2=${r.action_param2}, p3=${r.action_param3}) | target=${r.target_type}`;
+        });
         // Summarize gossip-related handlers up front since that's the #1 false-positive source
         const gossipHandlers = rows.filter(r => Number(r.event_type) === 62 || Number(r.event_type) === 64);
         const summary = gossipHandlers.length > 0
@@ -706,16 +707,18 @@ export function registerForensicTools(server: McpServer): void {
           lines.push(`  item=${item} chance=${r.ChanceOrQuestChance} min=${r.mincountOrRef} max=${r.maxcount} group=${r.groupid} | ${classification}`);
         }
 
+        const validRows = validDrops + currencies + validRefs;
+        const brokenRows = missingItems + missingRefs;
         const summary: string[] = [];
         summary.push(`=== ${table} entry ${entry}: ${rows.length} row(s) ===`);
         summary.push(`  ${validDrops} valid item drop(s), ${currencies} currency drop(s), ${validRefs} valid ref(s)`);
-        if (missingItems > 0 || missingRefs > 0) {
+        if (brokenRows > 0) {
           summary.push(`  ⚠️  ${missingItems} broken item ref(s), ${missingRefs} broken loot-table ref(s)`);
         }
-        if (rows.length > 0 && missingItems === rows.length && currencies === 0 && validRefs === 0) {
-          summary.push(`  ⚠️  ALL rows reference missing items — this loot table is fully broken.`);
-        } else if (missingItems > 0 || missingRefs > 0) {
-          summary.push(`  Note: even with broken rows above, the table still produces valid drops from the other ${validDrops + currencies + validRefs} row(s).`);
+        if (brokenRows > 0 && validRows === 0) {
+          summary.push(`  ⚠️  ALL ${rows.length} row(s) are broken — this loot table produces NOTHING in-game.`);
+        } else if (brokenRows > 0 && validRows > 0) {
+          summary.push(`  Note: ${validRows} of ${rows.length} rows still produce valid drops despite the ${brokenRows} broken row(s) above.`);
         }
         return { content: [{ type: "text" as const, text: summary.join("\n") + "\n\nRow details:\n" + lines.join("\n") }] };
       } catch (err: unknown) {

@@ -22,7 +22,7 @@ import { isAbsolute } from "path";
 async function main(): Promise<void> {
   const server = new McpServer({
     name: "wow-server-mcp",
-    version: "1.4.0",
+    version: "1.4.1",
   });
 
   // Initialize database schema mapping. If config.schemaOverride is set,
