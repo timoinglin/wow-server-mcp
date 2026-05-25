@@ -295,6 +295,48 @@ function* walkSourceFiles(root: string, includeExts: Set<string>): Generator<str
 }
 
 /**
+ * SQL identifiers and reserved words we should NOT prefix with `s.` when
+ * auto-disambiguating a self-join WHERE clause. List is intentionally
+ * conservative — better to leave something un-prefixed and surface a
+ * MySQL ambiguity error than to break a valid query.
+ */
+const SQL_KEYWORDS = new Set([
+  "AND", "OR", "NOT", "IS", "NULL", "TRUE", "FALSE",
+  "IN", "BETWEEN", "LIKE", "AS", "ON", "USING",
+  "DISTINCT", "ALL", "ANY", "SOME", "EXISTS", "CASE", "WHEN", "THEN", "ELSE", "END",
+  "DIV", "MOD", "XOR",
+]);
+
+/**
+ * Auto-prefix bare column identifiers in a user-supplied WHERE clause with
+ * `s.` when we're doing a self-join (source_table === target_table). Strings
+ * (single-quoted) and backtick-quoted identifiers are left alone.
+ *
+ * Conservative: only prefixes identifiers that look like column names AND
+ * aren't already qualified AND aren't SQL keywords. Numeric literals,
+ * already-qualified columns (`s.foo`, `t.foo`), keywords, and quoted
+ * strings pass through unchanged.
+ */
+function autoPrefixSelfJoinWhere(where: string): string {
+  // Tokenize: match string literals, backtick-quoted identifiers, or bare identifiers.
+  // The two captured groups correspond to: (a) opaque chunks we don't touch,
+  // (b) the bare identifier we might need to prefix.
+  // Negative lookbehind `(?<![\w.])` skips the second half of a qualified name
+  // (e.g. `Title` in `t.Title`). Negative lookahead `(?!\s*\.)` skips an
+  // unqualified identifier that's about to BE the alias of a qualified name
+  // (e.g. the `t` in `t.Title`).
+  return where.replace(
+    /('(?:[^'\\]|\\.)*'|`[^`]*`|"(?:[^"\\]|\\.)*")|(?<![\w.])([A-Za-z_][A-Za-z0-9_]*)(?!\s*\.)/g,
+    (match, quoted, ident) => {
+      if (quoted) return match;        // string / backtick block — leave alone
+      if (!ident) return match;
+      if (SQL_KEYWORDS.has(ident.toUpperCase())) return match;
+      return `s.\`${ident}\``;
+    }
+  );
+}
+
+/**
  * Grep a directory tree for an exact string. Returns at most `maxMatches`
  * results. Cheap enough for one-shot queries against a SkyFire-sized tree.
  */
@@ -541,7 +583,7 @@ export function registerForensicTools(server: McpServer): void {
       source_column: z.string().regex(/^[A-Za-z0-9_]+$/).describe("Column in source_table holding the foreign key (e.g. 'objectId')"),
       target_table: z.string().regex(/^[A-Za-z0-9_]+$/).describe("Table that should contain the referenced value (e.g. 'item_template')"),
       target_column: z.string().regex(/^[A-Za-z0-9_]+$/).describe("Column in target_table that source_column refers to (e.g. 'entry')"),
-      where: z.string().optional().describe("Optional extra WHERE clause on source rows (e.g. 'type = 1 AND objectId > 0'). Identifier-safe substring is NOT enforced — only pass values you trust."),
+      where: z.string().optional().describe("Optional extra WHERE clause on source rows (e.g. 'type = 1 AND objectId > 0'). Identifier-safe substring is NOT enforced — only pass values you trust. For self-joins (source_table = target_table, e.g. quest_template.PrevQuestId → quest_template.Id), bare column references are auto-prefixed with `s.` to disambiguate; if you need to reference a target-table column instead, qualify it explicitly with `t.colname`."),
       sample_size: z.number().min(0).max(100).optional().describe("Number of sample orphan rows to return (default 10)"),
       exclude_sentinels: z.boolean().optional().describe("If true, excludes known GOSSIP_OPTION_* sentinel values (1048576, 2097152, etc.) from the orphan count when source_column is action_menu_id. Default: auto (true if column name contains 'action_menu_id')."),
     },
@@ -551,7 +593,19 @@ export function registerForensicTools(server: McpServer): void {
         const sentinelClause = includeSentinelFilter
           ? ` AND s.\`${source_column}\` NOT IN (${Object.keys(GOSSIP_OPTION_SENTINELS).join(",")})`
           : "";
-        const extraWhere = where ? ` AND (${where})` : "";
+
+        // When source_table === target_table (self-join, e.g. quest_template.PrevQuestId →
+        // quest_template.Id), bare column names in the user's WHERE clause are ambiguous
+        // because both `s` and `t` aliases expose every column. Auto-prefix unqualified
+        // identifiers with `s.` so users don't have to know about the join structure.
+        // We skip:
+        //   - identifiers already qualified (preceded by `.`)
+        //   - SQL keywords
+        //   - identifiers inside string literals or backtick-quoted blocks
+        const processedWhere = (where && source_table === target_table)
+          ? autoPrefixSelfJoinWhere(where)
+          : where;
+        const extraWhere = processedWhere ? ` AND (${processedWhere})` : "";
 
         const countSql = `
           SELECT COUNT(*) AS n
