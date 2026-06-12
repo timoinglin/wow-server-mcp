@@ -1,3 +1,10 @@
+> ### 🐉 New from me — **WOW Legends**: a free WotLK 3.3.5a repack
+> Run your own living **Wrath of the Lich King (3.3.5a)** world in a few clicks — hundreds of AI-driven bots, an AI companion that chats back, hardcore mode, and a one-click installer.
+>
+> **▶ Check it out → [wow-legends.eu](https://wow-legends.eu)**
+
+---
+
 # WoW Server MCP
 
 [![Version](https://img.shields.io/badge/version-1.4.3-brightgreen.svg)](https://github.com/timoinglin/wow-server-mcp/releases)
